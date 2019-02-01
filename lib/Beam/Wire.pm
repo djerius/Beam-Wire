@@ -541,6 +541,8 @@ sub create_service {
         );
     }
 
+    $service_info{class} = $self->resolve_class( $service_info{class} );
+
     $self->emit( configure_service =>
         class => 'Beam::Wire::Event::ConfigService',
         service_name => $name,
@@ -550,7 +552,7 @@ sub create_service {
     use_module( $service_info{class} );
 
     if ( my $with = $service_info{with} ) {
-        my @roles = ref $with ? @{ $with } : ( $with );
+        my @roles = map { $self->resolve_role( $_ ) } ref $with ? @{ $with } : ( $with );
         my $class = Moo::Role->create_class_with_roles( $service_info{class}, @roles );
         $service_info{class} = $class;
     }
@@ -957,6 +959,28 @@ sub resolve_ref {
     return @ref;
 }
 
+=method resolve_class
+
+   my $class_name = $self->resolve_class( $class_name );
+
+Resolve C<$class_name>.  By default this simply returns C<$class_name>, but it could
+be used to apply a module namespace prefix or some other transformation.
+
+=cut
+
+sub resolve_class { $_[1] }
+
+=method resolve_role
+
+   my $class_name = $self->resolve_role( $role_name );
+
+Resolve C<$role_name>.  By default this simply returns C<$role_name>, but it could
+be used to apply a module namespace prefix or some other transformation.
+
+=cut
+
+sub resolve_role { $_[1] }
+
 =method fix_refs
 
     my @fixed = $wire->fix_refs( $for_container_name, @args );
@@ -1156,7 +1180,7 @@ sub validate {
         }
 
         if ($config{class}) {
-            eval "require " . $config{class};
+            eval "require " . $self->resolve_class( $config{class} );
         }
         #TODO: check method chain & serial
     }
